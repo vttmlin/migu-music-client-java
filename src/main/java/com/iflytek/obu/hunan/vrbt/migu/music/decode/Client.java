@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.type.MapType;
 import org.apache.commons.io.FileUtils;
 
 import java.io.File;
-import java.io.IOException;
 import java.net.URL;
 import java.util.List;
 import java.util.Map;
@@ -13,42 +12,14 @@ import java.util.Scanner;
 import java.util.stream.Collectors;
 
 public class Client {
-    public static void main(String[] args) throws IOException {
-        String url = "";
-        String key = "";
-        Scanner scanner = new Scanner(System.in);
-        if (args == null || args.length == 0) {
-            System.err.println("请输入URL:");
-            url = scanner.nextLine();
-        } else {
-            for (String arg : args) {
-                if (arg.startsWith("--url=")) {
-                    url = arg.substring(6);
-                }
-                if (arg.startsWith("--key=")) {
-                    key = arg.substring(6);
-                }
-            }
-        }
+    private static final Scanner scanner = new Scanner(System.in);
 
-        ObjectMapper mapper = new ObjectMapper();
-        MapType mapType = mapper.getTypeFactory().constructMapType(Map.class, String.class, String.class);
-        Map<String, String> map = mapper.readValue(new URL(url), mapType);
-        if (map == null || map.size() == 0) {
-            System.err.println("获取解密信息失败，请检查输入的URL");
-            System.exit(0);
-        }
-        System.err.println("请输入文件的日期:");
-        String date = scanner.nextLine();
-        if ("".equals(key)) {
-            key = map.get(date);
-        }
-        if (key == null || "".equals(key)) {
-            System.err.println("日期【" + date + "】获取解密key失败");
-            System.exit(0);
-        } else {
-            System.err.println("日期【" + date + "】key 获取成功==>> " + key);
-        }
+    public static void main(String[] args) throws Exception {
+//        解析参数
+        Config config = parseConfig(args);
+
+//        判断 code、url 优先级 如果是 url 则输入日期  获取解密 key
+        String key = getKey(config);
         Decoder decoder = new Decoder();
         while (true) {
             try {
@@ -59,10 +30,9 @@ public class Client {
                 }
                 String dist = source + ".txt";
                 List<String> strings = FileUtils.readLines(new File(source), "UTF8");
-                final String key1 = key;
                 strings = strings.stream().map(content -> {
                     try {
-                        byte[] decode = decoder.decode(key1, content);
+                        byte[] decode = decoder.decode(key, content);
                         return new String(decode, "GBK");
                     } catch (Exception e) {
                         e.printStackTrace();
@@ -76,5 +46,44 @@ public class Client {
                 e.printStackTrace();
             }
         }
+    }
+
+    private static String getKey(Config config) throws Exception {
+        if (config.getCode() != null && !"".equals(config.getCode())) {
+            return config.getCode();
+        }
+        ObjectMapper mapper = new ObjectMapper();
+        MapType mapType = mapper.getTypeFactory().constructMapType(Map.class, String.class, String.class);
+        Map<String, String> map = mapper.readValue(new URL(config.getUrl()), mapType);
+        if (map == null || map.size() == 0) {
+            System.err.println("获取解密信息失败，请检查输入的URL");
+            System.exit(0);
+        }
+        System.err.println("请输入文件的日期:");
+        String date = scanner.nextLine();
+        String code = map.get(date);
+        if (code == null || "".equals(code)) {
+            System.err.println("查询不到该日期的数据 " + date);
+            System.exit(-1);
+        }
+        return code;
+    }
+
+    private static Config parseConfig(String[] args) {
+        Config config = new Config();
+        if (args == null || args.length == 0) {
+            System.err.println("请输入URL:");
+            config.setUrl(scanner.nextLine());
+        } else {
+            for (String arg : args) {
+                if (arg.startsWith("--url=")) {
+                    config.setUrl(arg.substring(6));
+                }
+                if (arg.startsWith("--code=")) {
+                    config.setCode(arg.substring(7));
+                }
+            }
+        }
+        return config;
     }
 }
