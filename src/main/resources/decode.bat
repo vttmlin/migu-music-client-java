@@ -1,0 +1,1 @@
+java -jar migu-music-client-1.0.0-jar-with-dependencies.jar --url=https://hnvrbt.oss-cn-hangzhou.aliyuncs.com/migu_decoder/decode.json
