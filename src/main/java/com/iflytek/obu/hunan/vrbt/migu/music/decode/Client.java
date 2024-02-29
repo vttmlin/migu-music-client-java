@@ -6,6 +6,7 @@ import org.apache.commons.io.FileUtils;
 
 import java.io.File;
 import java.net.URL;
+import java.nio.charset.Charset;
 import java.util.List;
 import java.util.Map;
 import java.util.Scanner;
@@ -29,17 +30,19 @@ public class Client {
                     break;
                 }
                 String dist = source + ".txt";
-                List<String> strings = FileUtils.readLines(new File(source), "UTF8");
-                strings = strings.stream().map(content -> {
+                List<String> strings = FileUtils.readLines(new File(source), Charset.defaultCharset());
+
+                List<String> result = strings.parallelStream().map(content -> {
                     try {
                         byte[] decode = decoder.decode(key, content);
-                        return new String(decode, "GBK");
+                        return new String(decode, Charset.defaultCharset());
                     } catch (Exception e) {
                         e.printStackTrace();
                     }
                     return "";
                 }).collect(Collectors.toList());
-                FileUtils.writeLines(new File(dist), strings);
+
+                FileUtils.writeLines(new File(dist), result, "\r\n");
                 System.err.println("文件解密成功，解密后文件路径：【" + dist + "】");
             } catch (Exception e) {
                 System.err.println("解密失败");
